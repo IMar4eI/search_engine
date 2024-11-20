@@ -1,5 +1,6 @@
 #include <iostream>
 #include "ConverterJSON.h"
+#include "InvertedIndex.h"
 
 int main() {
   try {
