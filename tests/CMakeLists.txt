@@ -8,6 +8,7 @@ file(GLOB TEST_SOURCES ${CMAKE_SOURCE_DIR}/tests/*.cpp)
 target_sources(unit_tests PRIVATE
     ${TEST_SOURCES}
     ${CMAKE_SOURCE_DIR}/src/ConverterJSON.cpp
+    ${CMAKE_SOURCE_DIR}/src/InvertedIndex.cpp
 )
 
 # Header files
