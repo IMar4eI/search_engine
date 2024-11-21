@@ -4,6 +4,7 @@
 #include <future>
 #include <unordered_map>
 #include <algorithm>
+#include <iostream>
 
 /**
   * @brief Constructs a SearchServer with a reference to an InvertedIndex.
@@ -24,15 +25,25 @@ std::vector<std::vector<RelativeIndex> > SearchServer::search(const std::vector<
   std::vector<std::vector<RelativeIndex>> result;
 
   // Process each query asynchronously
-  for (const auto& query :queries_input) {
+  for (const auto& query : queries_input) {
     futures.push_back(std::async(std::launch::async, [this, query]() {
-      return ProcessQuery(query);
+        try {
+            return ProcessQuery(query);
+        } catch (const std::exception& e) {
+            std::cerr << "Error processing query '" << query << "': " << e.what() << std::endl;
+            return std::vector<RelativeIndex>{};
+        }
     }));
   }
 
   // Collect results from all futures
   for (auto& future : futures) {
-    result.push_back(future.get());
+    try {
+      result.push_back(future.get());
+    } catch (const std::exception& e) {
+      std::cerr << "Error getting results from future: " << e.what() << std::endl;
+      result.push_back({});
+    }
   }
 
   return result;
@@ -44,13 +55,23 @@ std::vector<std::vector<RelativeIndex> > SearchServer::search(const std::vector<
  * @return Vector of RelativeIndex objects representing search results.
  */
 std::vector<RelativeIndex> SearchServer::ProcessQuery(const std::string& query) {
+  if (query.empty()) {
+    throw std::invalid_argument("Received empty query.");
+  }
+
   std::istringstream iss(query);
   std::string word;
   std::unordered_map<size_t, size_t> doc_to_count;
   std::set<std::string> unique_words;
 
   // Extract unique words from the query
-  while(iss >> word) unique_words.insert(word);
+  while (iss >> word) {
+    unique_words.insert(word);
+  }
+
+  if (unique_words.empty()) {
+    throw std::invalid_argument("Query contains no valid words.");
+  }
 
   // Accumulate word counts for each document
   for (const auto& word : unique_words) {
@@ -60,24 +81,34 @@ std::vector<RelativeIndex> SearchServer::ProcessQuery(const std::string& query) 
     }
   }
 
+  if (doc_to_count.empty()) {
+    // No documents found matching the query
+    return {};
+  }
+
   // Find the maximum absolute relevance
   size_t max_absolute_relevance = 0;
   for (const auto& [doc_id, count] : doc_to_count) {
     max_absolute_relevance = std::max(max_absolute_relevance, count);
   }
 
+  if (max_absolute_relevance == 0) {
+    throw std::runtime_error("Maximum absolute relevance is zero. Possible division by zero.");
+  }
+
   std::vector<RelativeIndex> relative_indices;
 
   // Calculate the relative relevance for each document
   for (const auto& [doc_id, count] : doc_to_count) {
-    relative_indices.push_back({doc_id, static_cast<float>(count) / max_absolute_relevance});
+    float rank = static_cast<float>(count) / max_absolute_relevance;
+    relative_indices.push_back({ doc_id, rank });
   }
 
   // Sort results by rank in descending order
   std::sort(relative_indices.begin(), relative_indices.end(),
-    [](const RelativeIndex& a, const RelativeIndex& b) {
-      return b.rank > a.rank;
-    });
+      [](const RelativeIndex& a, const RelativeIndex& b) {
+          return b.rank < a.rank || (b.rank == a.rank && a.doc_id < b.doc_id);
+      });
 
   // Limit the number of responses to _responses_limit
   if (relative_indices.size() > static_cast<size_t>(_responses_limit)) {

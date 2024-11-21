@@ -13,14 +13,19 @@ using json = nlohmann::json;
  */
 std::vector<std::string> ConverterJSON::GetTextDocuments() {
   std::vector<std::string> documents;
-  std::ifstream config_file("../data/config.json");
+  std::string config_path = "../data/config.json";
+  std::ifstream config_file(config_path);
 
   if (!config_file.is_open()) {
-    throw std::runtime_error("config file is missing");
+    throw std::runtime_error("Cannot open config file: " + config_path);
   }
 
   json config_json;
-  config_file >> config_json;
+  try {
+    config_file >> config_json;
+  } catch (const json::parse_error& e) {
+    throw std::runtime_error("Error parsing JSON in config file: " + std::string(e.what()));
+  }
   config_file.close();
 
   // Check if the "config" sections exists
@@ -28,30 +33,43 @@ std::vector<std::string> ConverterJSON::GetTextDocuments() {
     throw std::runtime_error("config file is empty");
   }
 
+  // Check if the "config" section exists
+  if (!config_json.contains("config") || !config_json["config"].is_object()) {
+    throw std::runtime_error("Config file is missing 'config' section or it is not an object.");
+  }
+
   // Check for "version" in "config"
-  if (config_json["config"].find("version") == config_json["config"].end()) {
-    throw std::runtime_error("config.json has incorrect file version");
+  if (!config_json["config"].contains("version") || !config_json["config"]["version"].is_string()) {
+    throw std::runtime_error("Config file is missing 'version' field in 'config' section or it is not a string.");
   }
 
   // Check if "files" section exists
-  if (config_json.find("files") == config_json.end()) {
-    throw std::runtime_error("no files to process in config.json");
+  if (!config_json.contains("files") || !config_json["files"].is_array()) {
+    throw std::runtime_error("Config file is missing 'files' section or it is not an array.");
   }
 
   // Iterate over each file path in "files"
-  for (const auto& file_path : config_json["files"]) {
-    std::ifstream file(file_path.get<std::string>());
+  for (const auto& file_path_json : config_json["files"]) {
+    if (!file_path_json.is_string()) {
+      std::cerr << "File path is not a string. Skipping entry." << std::endl;
+      continue;
+    }
+    std::string file_path = file_path_json.get<std::string>();
 
+    std::ifstream file(file_path);
     if (!file.is_open()) {
-      std::cerr << "Cannot open file: " << file_path << std::endl;
+      std::cerr << "Cannot open file: " << file_path << ". Skipping this file." << std::endl;
       continue;
     }
 
     // Read the entire content of the file
-    std::string content((std::istreambuf_iterator<char>(file)),
-                         std::istreambuf_iterator<char>());
+    std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
     documents.push_back(content);
     file.close();
+  }
+
+  if (documents.empty()) {
+    throw std::runtime_error("No documents were read. Please check the file paths in config.json.");
   }
 
   return documents;
@@ -62,23 +80,32 @@ std::vector<std::string> ConverterJSON::GetTextDocuments() {
  * @return Maximum number of responses; returns default value 5 if not specified.
  */
 int ConverterJSON::GetResponsesLimit() {
-  std::ifstream config_file("../data/config.json");
+  std::string config_path = "../data/config.json";
+  std::ifstream config_file(config_path);
 
   if (!config_file.is_open()) {
-    throw std::runtime_error("config file is missing");
+    throw std::runtime_error("Cannot open config file: " + config_path);
   }
 
   json config_json;
-  config_file >> config_json;
+  try {
+    config_file >> config_json;
+  } catch (const json::parse_error& e) {
+    throw std::runtime_error("Error parsing JSON in config file: " + std::string(e.what()));
+  }
   config_file.close();
 
   int max_responses = 5; // Default value
 
   // Check if "max_responses" exists in "config"
-  if (config_json.find("config") != config_json.end()) {
-    if (config_json["config"].find("max_responses") != config_json["config"].end()) {
+  if (config_json.contains("config") && config_json["config"].contains("max_responses")) {
+    if (config_json["config"]["max_responses"].is_number_integer()) {
       max_responses = config_json["config"]["max_responses"].get<int>();
+    } else {
+      std::cerr << "'max_responses' in config file is not an integer. Using default value: 5" << std::endl;
     }
+  } else {
+    std::cerr << "'max_responses' not found in config file. Using default value: 5" << std::endl;
   }
 
   return max_responses;
@@ -90,24 +117,37 @@ int ConverterJSON::GetResponsesLimit() {
  */
 std::vector<std::string> ConverterJSON::GetRequests() {
   std::vector<std::string> requests;
-  std::ifstream requests_file("../data/requests.json");
+  std::string requests_path = "../data/requests.json";
+  std::ifstream requests_file(requests_path);
 
   if (!requests_file.is_open()) {
-    throw std::runtime_error("requests.json file is missing");
+    throw std::runtime_error("Cannot open requests file: " + requests_path);
   }
 
   json requests_json;
-  requests_file >> requests_json;
+  try {
+    requests_file >> requests_json;
+  } catch (const json::parse_error& e) {
+    throw std::runtime_error("Error parsing JSON in requests file: " + std::string(e.what()));
+  }
   requests_file.close();
 
   // Check if "requests" section exists
-  if (requests_json.find("requests") == requests_json.end()) {
-    throw std::runtime_error("No requests found in requests.json");
+  if (!requests_json.contains("requests") || !requests_json["requests"].is_array()) {
+    throw std::runtime_error("Requests file is missing 'requests' section or it is not an array.");
   }
 
   // Extract each request
-  for (const auto& request : requests_json["requests"]) {
-    requests.push_back(request.get<std::string>());
+  for (const auto& request_json : requests_json["requests"]) {
+    if (!request_json.is_string()) {
+      std::cerr << "Request is not a string. Skipping entry." << std::endl;
+      continue;
+    }
+    requests.push_back(request_json.get<std::string>());
+  }
+
+  if (requests.empty()) {
+    throw std::runtime_error("No valid requests found in requests.json.");
   }
 
   return requests;
@@ -118,52 +158,70 @@ std::vector<std::string> ConverterJSON::GetRequests() {
  * @param answers Vector of vectors containing RelativeIndex objects for each request.
  */
 void ConverterJSON::putAnswers(const std::vector<std::vector<RelativeIndex>>& answers) {
-  json answers_json;
-
-  int request_id = 1;
-
-  // Iterate over each request's results
-  for (const auto& result_for_request : answers) {
-    std::ostringstream oss;
-    oss << "request" << std::setw(3) << std::setfill('0') << request_id;
-    std::string request_key = oss.str();
-    ++request_id;
-
-    json result;
-
-    if (result_for_request.empty()) {
-      result["result"] = false;
-    } else {
-      result["result"] = true;
-
-      if (result_for_request.size() > 1) {
-        json relevance = json::array();
-        for (const auto& rel : result_for_request) {
-          relevance.push_back({
-            {"docid", rel.doc_id},
-            {"rank", rel.rank}
-          });
-        }
-        result["relevance"] = relevance;
-      } else {
-        const auto& rel = result_for_request.front();
-        result["docid"] = rel.doc_id;
-        result["rank"] = rel.rank;
-      }
+  if (answers.empty()) {
+        std::cerr << "No answers to write to answers.json." << std::endl;
+        return;
     }
 
-    answers_json["answers"][request_key] = result;
-  }
+    json answers_json;
+    int request_id = 1;
 
-  // Create "data" directory if it doesn't exist
-  std::filesystem::create_directory("data");
+    // Iterate over each request's results
+    for (const auto& result_for_request : answers) {
+        std::ostringstream oss;
+        oss << "request" << request_id;
+        std::string request_key = oss.str();
+        ++request_id;
 
-  std::ofstream answers_file("../data/answers.json");
-  if (!answers_file.is_open()) {
-    throw std::runtime_error("Cannot open answer.json for writting");
-  }
+        json result;
 
-  // Write formatted JSON to the file
-  answers_file << std::setw(4) << answers_json.dump(4);
-  answers_file.close();
+        if (result_for_request.empty()) {
+            result["result"] = false;
+        } else {
+            result["result"] = true;
+
+            if (result_for_request.size() > 1) {
+                json relevance = json::array();
+                for (const auto& rel : result_for_request) {
+                    relevance.push_back({
+                        {"docid", rel.doc_id},
+                        {"rank", rel.rank}
+                    });
+                }
+                result["relevance"] = relevance;
+            } else {
+                const auto& rel = result_for_request.front();
+                result["docid"] = rel.doc_id;
+                result["rank"] = rel.rank;
+            }
+        }
+
+        answers_json["answers"][request_key] = result;
+    }
+
+    // Create "data" directory if it doesn't exist
+    std::string data_dir = "data";
+    if (!std::filesystem::exists(data_dir)) {
+        std::error_code ec;
+        std::filesystem::create_directory(data_dir, ec);
+        if (ec) {
+            throw std::runtime_error("Failed to create directory 'data': " + ec.message());
+        }
+    }
+
+    std::string answers_path = "../data/answers.json";
+    std::ofstream answers_file(answers_path);
+    if (!answers_file.is_open()) {
+        throw std::runtime_error("Cannot open answers file for writing: " + answers_path);
+    }
+
+    // Write formatted JSON to the file
+    try {
+        answers_file << std::setw(4) << answers_json;
+        answers_file.close();
+    } catch (const std::exception& e) {
+        throw std::runtime_error("Error writing to answers file: " + std::string(e.what()));
+    }
+
+    std::cout << "Answers successfully written to: " << std::filesystem::absolute(answers_path) << std::endl;
 }

@@ -17,18 +17,18 @@ file(GLOB SOURCES ${SOURCE_DIR}/*.cpp)
 file(GLOB HEADERS ${INCLUDE_DIR}/*.h)
 
 # Enabling automatic processing of Qt files
-set(CMAKE_AUTOMOC ON)
-set(CMAKE_AUTORCC ON)
-set(CMAKE_AUTOUIC ON)
+#set(CMAKE_AUTOMOC ON)
+#set(CMAKE_AUTORCC ON)
+#set(CMAKE_AUTOUIC ON)
 
 # Finding Qt
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Quick Qml)
+#find_package(Qt6 REQUIRED COMPONENTS Core Gui Quick Qml)
 
 # Include directories
 include_directories(${INCLUDE_DIR})
 
 # Connecting resources
-qt_add_resources(QRC_RESOURCES resources/resources.qrc)
+#qt_add_resources(QRC_RESOURCES resources/resources.qrc)
 
 # Connect to FetchContent
 include(FetchContent)
@@ -50,20 +50,20 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(googletest json)
 
 # Executable file
-qt_add_executable(search_engine
+add_executable(search_engine
         ${SOURCES}
         ${HEADERS}
-        ${QRC_RESOURCES}
+        #${QRC_RESOURCES}
 )
 
 # Library connection
-target_link_libraries(search_engine PRIVATE nlohmann_json Qt6::Quick Qt6::Qml)
+target_link_libraries(search_engine PRIVATE nlohmann_json)
 
 # Add test executable
 enable_testing()
 
 #Create test executable
-qt_add_executable(unit_tests)
+add_executable(unit_tests)
 
 # Add test sources
 file(GLOB TEST_SOURCES ${TEST_DIR}/*.cpp)
@@ -73,12 +73,11 @@ target_sources(unit_tests PRIVATE
         ${SOURCE_DIR}/ConverterJSON.cpp
         ${SOURCE_DIR}/InvertedIndex.cpp
         ${SOURCE_DIR}/SearchServer.cpp
-        ${SOURCE_DIR}/SearchEngine.cpp
 )
 
 # Link test libraries
 target_include_directories(unit_tests PRIVATE ${INCLUDE_DIR})
-target_link_libraries(unit_tests PRIVATE gtest_main Qt6::Core Qt6::Gui Qt6::Quick Qt6::Qml nlohmann_json)
+target_link_libraries(unit_tests PRIVATE gtest_main nlohmann_json)
 
 # GoogleTest integration
 include(GoogleTest)
