@@ -1,5 +1,6 @@
 <RCC>
     <qresource prefix="/">
+        <file>../qml/main.qml</file>
         <file>file001.txt</file>
         <file>file002.txt</file>
         <file>file003.txt</file>
