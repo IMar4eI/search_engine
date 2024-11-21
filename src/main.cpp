@@ -51,13 +51,13 @@ int main(int argc, char *argv[]) {
   }
 
   // Set up context properties for QML
-  engine.rootContext()->setContextPropery("cppInterface", &search_engine);
+  engine.rootContext()->setContextProperty("cppInterface", &search_engine);
   engine.rootContext()->setContextProperty("resultsModel", &results_model);
 
   // Load QML interface
   const QUrl url(u"qrc:/qml/main.qml"_s);
   QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,
-                   &app, [url](QObjcet *obj, const QUrl &objUrl) {
+                   &app, [url](QObject *obj, const QUrl &objUrl) {
                      if (!obj && url == objUrl) QCoreApplication::exit(-1);
                    }, Qt::QueuedConnection);
   engine.load(url);

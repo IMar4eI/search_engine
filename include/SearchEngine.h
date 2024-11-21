@@ -30,6 +30,24 @@ public:
      */
   void setEngine(QQmlApplicationEngine *engine);
 
+  /**
+     * @brief Sets the text documents for the search engine.
+     * @param documents A vector of text documents.
+     */
+   void setDocuments(const std::vector<std::string>& documents);
+
+  /**
+     * @brief Sets the maximum number of responses for a query.
+     * @param maxResponses The maximum number of responses.
+     */
+   void setMaxResponses(int maxResponses);
+
+  /**
+     * @brief Sets the search requests to be processed.
+     * @param requests A vector of search requests.
+     */
+   void setRequests(const std::vector<std::string>& requests);
+
   ~SearchEngine();
 
 private:

@@ -4,7 +4,7 @@
   * @brief Constructs the ResultsModel object.
   * @param parent Optional parent object.
   */
-ResultsModel::RsultsModel(QObject *parent)
+ResultsModel::ResultsModel(QObject *parent)
  : QAbstractListModel(parent) {}
 
 /**
