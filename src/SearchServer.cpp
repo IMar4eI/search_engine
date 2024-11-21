@@ -20,13 +20,15 @@ SearchServer::SearchServer(InvertedIndex& idx, int responses_limit)
  * @return Vector of vectors containing RelativeIndex objects for each query.
  */
 
-std::vector<std::vector<RelativeIndex> > SearchServer::search(const std::vector<std::string>& queries_input) {
+std::vector<std::vector<RelativeIndex>> SearchServer::search(const std::vector<std::string>& queries_input) {
   std::vector<std::future<std::vector<RelativeIndex>>> futures;
   std::vector<std::vector<RelativeIndex>> result;
+  futures.reserve(queries_input.size());
+  result.reserve(queries_input.size());
 
   // Process each query asynchronously
   for (const auto& query : queries_input) {
-    futures.push_back(std::async(std::launch::async, [this, query]() {
+    futures.push_back(std::async(std::launch::async, [this, &query]() {
         try {
             return ProcessQuery(query);
         } catch (const std::exception& e) {
@@ -97,22 +99,35 @@ std::vector<RelativeIndex> SearchServer::ProcessQuery(const std::string& query) 
   }
 
   std::vector<RelativeIndex> relative_indices;
+  relative_indices.reserve(doc_to_count.size());
 
   // Calculate the relative relevance for each document
   for (const auto& [doc_id, count] : doc_to_count) {
-    float rank = static_cast<float>(count) / max_absolute_relevance;
+    float rank = static_cast<float>(count) / static_cast<float>(max_absolute_relevance);
     relative_indices.push_back({ doc_id, rank });
   }
 
-  // Sort results by rank in descending order
-  std::sort(relative_indices.begin(), relative_indices.end(),
-      [](const RelativeIndex& a, const RelativeIndex& b) {
-          return b.rank < a.rank || (b.rank == a.rank && a.doc_id < b.doc_id);
-      });
-
-  // Limit the number of responses to _responses_limit
+  // Use partial_sort to get top N results
   if (relative_indices.size() > static_cast<size_t>(_responses_limit)) {
+    std::partial_sort(relative_indices.begin(),
+      relative_indices.begin() + _responses_limit,
+      relative_indices.end(),
+      [](const RelativeIndex& a, const RelativeIndex& b) {
+        if (a.rank == b.rank) {
+          return a.doc_id < b.doc_id;
+        }
+        return a.rank > b.rank;
+      });
     relative_indices.resize(_responses_limit);
+  } else {
+    // Sort all results
+    std::sort(relative_indices.begin(), relative_indices.end(),
+      [](const RelativeIndex& a, const RelativeIndex& b) {
+        if (a.rank == b.rank) {
+          return a.doc_id < b.doc_id;
+        }
+        return a.rank > b.rank;
+      });
   }
 
   return relative_indices;

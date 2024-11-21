@@ -18,6 +18,7 @@ void InvertedIndex::UpdateDocumentBase(const std::vector<std::string>& input_doc
   freq_dictionary.clear();
 
   std::vector<std::future<std::unordered_map<std::string, std::vector<Entry>>>> futures;
+  futures.reserve(docs.size());
 
   // Process each document asynchronously
   for (size_t doc_id = 0; doc_id < docs.size(); ++doc_id) {
@@ -28,32 +29,41 @@ void InvertedIndex::UpdateDocumentBase(const std::vector<std::string>& input_doc
 
         // Count occurrences of each word in the document
         while (iss >> word) {
-            word_count_in_doc[word]++;
+            ++word_count_in_doc[word];
         }
 
         // Local frequency dictionary for this document
         std::unordered_map<std::string, std::vector<Entry>> local_freq_dict;
 
         for (const auto& [word, count] : word_count_in_doc) {
-            local_freq_dict[word].push_back({ doc_id, count });
+            local_freq_dict[std::move(word)].push_back({ doc_id, count });
         }
 
         return local_freq_dict;
     }));
   }
 
+  // Temporary structure to store combined results without locks
+  std::unordered_map<std::string, std::vector<Entry>> combined_freq_dictionary;
+
   // Collect results and merge into the main frequency dictionary
   for (auto& future : futures) {
     try {
       auto local_freq_dict = future.get();
-      std::lock_guard<std::mutex> lock(freq_mutex);
       for (const auto& [word, entries] : local_freq_dict) {
-        freq_dictionary[word].insert(freq_dictionary[word].end(), entries.begin(), entries.end());
+        combined_freq_dictionary[std::move(word)].insert(
+          combined_freq_dictionary[word].end(),
+          std::make_move_iterator(entries.begin()),
+          std::make_move_iterator(entries.end())
+        );
       }
     } catch (const std::exception& e) {
       std::cerr << "Error updating document base: " << e.what() << std::endl;
     }
   }
+
+  // Move combined results to the main frequency dictionary
+  freq_dictionary = std::move(combined_freq_dictionary);
 }
 
 /**

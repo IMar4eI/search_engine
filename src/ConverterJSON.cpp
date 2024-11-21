@@ -48,6 +48,9 @@ std::vector<std::string> ConverterJSON::GetTextDocuments() {
     throw std::runtime_error("Config file is missing 'files' section or it is not an array.");
   }
 
+  // Reserve space in the vector to avoid reallocations
+  documents.reserve(config_json["files"].size());
+
   // Iterate over each file path in "files"
   for (const auto& file_path_json : config_json["files"]) {
     if (!file_path_json.is_string()) {
@@ -64,7 +67,7 @@ std::vector<std::string> ConverterJSON::GetTextDocuments() {
 
     // Read the entire content of the file
     std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-    documents.push_back(content);
+    documents.push_back(std::move(content));
     file.close();
   }
 
