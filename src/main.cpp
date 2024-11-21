@@ -1,57 +1,66 @@
-#include <iostream>
+#include <QGuiApplication>
+#include <QQmlApplicationEngine>
+#include <QQmlContext>
+#include "SearchEngine.h"
+#include "ResultsModel.h"
 #include "ConverterJSON.h"
-#include "InvertedIndex.h"
+#include <iostream>
 
-int main() {
+using namespace Qt::StringLiterals;
+
+void initializeSearchEngine(SearchEngine& searchEngine) {
   try {
     // Instantiate the ConverterJSON class
     ConverterJSON converter;
 
-    // Get and display text documents
+    //Get and display text documents
     std::cout << "Reading text documents from config.json..." << std::endl;
     auto documents = converter.GetTextDocuments();
-    for (const auto& doc : documents) {
-      std::cout << doc << std::endl;
-    }
+    searchEngine.setDocuments(documents);
 
     // Get and display the maximum number of responses
     std::cout << "Getting max responses from config.json..." << std::endl;
     int max_responses = converter.GetResponsesLimit();
-    std::cout << "Max responses: " << max_responses << std::endl;
+    searchEngine.setMaxResponses(max_responses);
 
     // Get and display search requests
     std::cout << "Reading search requests from requests.json..." << std::endl;
     auto requests = converter.GetRequests();
-    std::cout << "Requests loaded: " << std::endl;
-    for (const auto& req : requests) {
-      std::cout << req << std::endl;
-    }
+    searchEngine.setRequests(requests);
 
-    // Simulate answers for testing (you need to replace this with actual logic)
-    std::cout << "Generating sample answers..." << std::endl;
-    std::vector<std::vector<RelativeIndex>> answers;
-
-    // Simulate 4 requests with some sample RelativeIndex data
-    for (size_t i = 0; i < requests.size(); i++) {
-      std::vector<RelativeIndex> answer;
-      for (size_t j = 0; j < max_responses; j++) {
-        answer.push_back({
-                    static_cast<size_t>(i * max_responses + j),
-                    static_cast<float>(1.0f / (j + 1))
-                });
-      }
-      answers.push_back(answer);
-    }
-
-    // Write answers to answers.json
-    std::cout << "Writting answers to answers.json..." << std::endl;
-    converter.putAnswers(answers);
-
-    std::cout << "All operations completed successfully!" << std::endl;
-
+    std::cout << "All initial data loaded successfully!" << std::endl;
   } catch (const std::exception& ex) {
-    std::cerr << "An error occurred: " << ex.what() << std::endl;
+    std::cerr << "An error occurred during initialization: " << ex.what() << std::endl;
+    throw;
+  }
+}
+
+int main(int argc, char *argv[]) {
+  QGuiApplication app(argc, argv);
+  QQmlApplicationEngine engine;
+
+  SearchEngine search_engine;
+  ResultsModel results_model;
+
+  // Initialize search engine with JSON data
+  try {
+    initializeSearchEngine(search_engine);
+  } catch (const std::exception& ex) {
+    std::cerr << "Error during initialization: " << ex.what() << std::endl;
     return 1;
   }
 
+  // Set up context properties for QML
+  engine.rootContext()->setContextPropery("cppInterface", &search_engine);
+  engine.rootContext()->setContextProperty("resultsModel", &results_model);
+
+  // Load QML interface
+  const QUrl url(u"qrc:/qml/main.qml"_s);
+  QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,
+                   &app, [url](QObjcet *obj, const QUrl &objUrl) {
+                     if (!obj && url == objUrl) QCoreApplication::exit(-1);
+                   }, Qt::QueuedConnection);
+  engine.load(url);
+
+  return app.exec();
 }
