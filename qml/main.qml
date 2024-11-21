@@ -4,7 +4,7 @@ import QtQuick.Controls.Material 2.15
 import QtQuick.Layouts 1.15
 
 ApplicationWindow {
-    visible = true
+    visible: true
     width: 800
     height: 600
     title: qsTr("Search Engine")
@@ -12,7 +12,7 @@ ApplicationWindow {
     // Set the Material Design theme based on the current theme property
     Material.theme: theme === "dark" ? Material.Dark : Material.Light
 
-    property string theme: "light" // Theme switching betweeen "light" and "dark"
+    property string theme: "light" // Theme switching between "light" and "dark"
 
     Component.onCompleted: {
         applyTheme()
@@ -20,13 +20,13 @@ ApplicationWindow {
 
     // Function to apply the selected theme to the application window
     function applyTheme() {
-        appWindow.color == theme === "dark" ? "#121212" : "#fff"
+        appWindow.color = theme === "dark" ? "#121212" : "#ffffff"
     }
 
     Rectangle {
         id: appWindow
         anchors.fill: parent
-        color: theme === "dark" ? "#121212" : "#fff"
+        color: theme === "dark" ? "#121212" : "#ffffff"
 
         ColumnLayout {
             anchors.fill: parent
@@ -38,11 +38,11 @@ ApplicationWindow {
                 Layout.fillWidth: true
 
                 Text {
-                    text: "Panda Seach Engine"
+                    text: "Panda Search Engine"
                     font.pixelSize: 36
                     font.bold: true
-                    color: theme === "dark" ? "#fff" : "#000"
-                    Layout.alignment: Qt.AlignCenter
+                    color: theme === "dark" ? "#ffffff" : "#000000"
+                    Layout.alignment: Qt.AlignLeft
                 }
 
                 // Theme switcher button
@@ -52,7 +52,7 @@ ApplicationWindow {
                     width: 120
                     height: 40
                     onClicked: {
-                        theme = theme === "dark"? "light" : "dark"
+                        theme = theme === "dark" ? "light" : "dark"
                         applyTheme()
                     }
                 }
@@ -61,15 +61,16 @@ ApplicationWindow {
             // Search bar
             RowLayout {
                 Layout.fillWidth: true
+                spacing: 10
 
                 Rectangle {
                     id: searchBar
                     Layout.fillWidth: true
                     height: 50
                     radius: 25
-                    border.color: "e0e0e0"
+                    border.color: "#E0E0E0"
                     border.width: 1
-                    color: theme === "dark" ? "#333" : "#fff"
+                    color: theme === "dark" ? "#333333" : "#ffffff"
 
                     RowLayout {
                         anchors.fill: parent
@@ -80,19 +81,17 @@ ApplicationWindow {
                             source: "qrc:/icons/panda.png"
                             width: 30
                             height: 30
-                            horizontalAlignment: Qt.AlignCenter
-                            verticalAlignment: Qt.AlignCenter
                             fillMode: Image.PreserveAspectFit
                         }
 
                         // Input field for search queries
                         TextField {
                             id: searchField
-                            placeholderText: qsTr("Search")
+                            placeholderText: qsTr("Enter your search query")
                             font.pixelSize: 16
                             Layout.fillWidth: true
                             background: null
-                            color: theme === "dark" ? "#fff" : "#000"
+                            color: theme === "dark" ? "#ffffff" : "#000000"
                             Keys.onReturnPressed: {
                                 cppInterface.performSearch(searchField.text)
                                 historyModel.append({query: searchField.text})
@@ -115,7 +114,7 @@ ApplicationWindow {
                         text: "Search History"
                         font.pixelSize: 18
                         font.bold: true
-                        color: theme === "dark" ? "#fff" : "#000"
+                        color: theme === "dark" ? "#ffffff" : "#000000"
                         Layout.alignment: Qt.AlignLeft
                     }
 
@@ -145,9 +144,9 @@ ApplicationWindow {
                     delegate: Rectangle {
                         width: parent.width
                         height: 40
-                        color: theme === "dark" ? "#333" : "#f0f0f0"
+                        color: theme === "dark" ? "#333333" : "#f0f0f0"
                         radius: 8 // Rounded corners
-                        border.color: "#888"
+                        border.color: "#888888"
 
                         // Display the query text
                         Text {
@@ -157,7 +156,7 @@ ApplicationWindow {
                             anchors.margins: 10 // Margins on all sides
                             horizontalAlignment: Text.AlignLeft
                             verticalAlignment: Text.AlignVCenter
-                            color: theme === "dark" ? "#fff" : "#000"
+                            color: theme === "dark" ? "#ffffff" : "#000000"
                             elide: Text.ElideRight
                             clip: true // Clip text at the boundaries
                         }
@@ -178,18 +177,18 @@ ApplicationWindow {
 
             // Search results section
             ListView {
-                id: resultView
+                id: resultsView
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 model: resultsModel
                 delegate: Rectangle {
                     width: parent.width
                     height: 50
-                    color: theme === "dark" ? "#333" : "#f9f9f9"
+                    color: theme === "dark" ? "#333333" : "#f9f9f9"
                     Text {
-                        text: "Document ID: " + docid + "Rank: " + rank.toFixed(2)
+                        text: "Document ID: " + docid + ", Rank: " + rank.toFixed(2)
                         anchors.centerIn: parent
-                        color: theme === "dark" ? "#fff" : "#000"
+                        color: theme === "dark" ? "#ffffff" : "#000000"
                     }
                 }
             }
