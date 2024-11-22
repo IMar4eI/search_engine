@@ -5,12 +5,13 @@
 #include <unordered_map>
 #include <algorithm>
 #include <iostream>
+#include <execution>
 
 /**
-  * @brief Constructs a SearchServer with a reference to an InvertedIndex.
-  * @param idx Reference to an existing InvertedIndex object.
-  * @param responses_limit Maximum number of responses to return for a query.
-  */
+ * @brief Constructs a SearchServer with a reference to an InvertedIndex.
+ * @param idx Reference to an existing InvertedIndex object.
+ * @param responses_limit Maximum number of responses to return for a query.
+ */
 SearchServer::SearchServer(InvertedIndex& idx, int responses_limit)
   : _index(idx), _responses_limit(responses_limit) {}
 
@@ -19,7 +20,6 @@ SearchServer::SearchServer(InvertedIndex& idx, int responses_limit)
  * @param queries_input Vector of search query strings.
  * @return Vector of vectors containing RelativeIndex objects for each query.
  */
-
 std::vector<std::vector<RelativeIndex>> SearchServer::search(const std::vector<std::string>& queries_input) {
   std::vector<std::future<std::vector<RelativeIndex>>> futures;
   std::vector<std::vector<RelativeIndex>> result;
@@ -28,7 +28,7 @@ std::vector<std::vector<RelativeIndex>> SearchServer::search(const std::vector<s
 
   // Process each query asynchronously
   for (const auto& query : queries_input) {
-    futures.push_back(std::async(std::launch::async, [this, &query]() {
+    futures.push_back(std::async(std::launch::async, [this, query]() {
         try {
             return ProcessQuery(query);
         } catch (const std::exception& e) {
@@ -91,7 +91,9 @@ std::vector<RelativeIndex> SearchServer::ProcessQuery(const std::string& query) 
   // Find the maximum absolute relevance
   size_t max_absolute_relevance = 0;
   for (const auto& [doc_id, count] : doc_to_count) {
-    max_absolute_relevance = std::max(max_absolute_relevance, count);
+    if (count > max_absolute_relevance) {
+      max_absolute_relevance = count;
+    }
   }
 
   if (max_absolute_relevance == 0) {

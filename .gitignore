@@ -1,4 +1,75 @@
-.git
-.idea
-cmake-build-debug
-cmake-build-qt
+# Compiled object files
+*.o
+*.obj
+*.lo
+*.la
+*.al
+*.libs
+*.dll
+*.so
+*.so.*
+*.dylib
+*.lib
+*.a
+
+# Compiled static libraries
+*.lib
+*.a
+
+# Compiled dynamic libraries
+*.dll
+*.so
+*.so.*
+*.dylib
+
+# Executables
+*.exe
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
+
+# Debug files
+*.dSYM/
+*.su
+*.idb
+*.pdb
+
+# Other files
+*.cache
+*.pch
+*.mod
+*.cmd
+
+# Build directories
+build/
+cmake-build-debug/
+cmake-build-release/
+cmake-build-qt/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# IDE specific files
+.idea/
+.vscode/
+*.iml
+
+# MacOS files
+.DS_Store
+
+# Doxygen generated files
+docs/
+html/
+latex/
+
+# Logs and databases
+*.log
+*.sql
+*.sqlite
+
+# Temporary files
+*.swp
+*~

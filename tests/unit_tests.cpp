@@ -219,5 +219,87 @@ TEST(SearchServerTest, ParallelProcessing) {
   ASSERT_EQ(result[2].size(), 3);
 }
 
+TEST(TestCaseInvertedIndex, TestCaseSensitivity) {
+  const std::vector<std::string> docs = {
+    "Apple banana orange",
+    "apple Banana ORANGE",
+    "APPLE BANANA ORANGE"
+};
+  const std::vector<std::string> requests = { "apple", "Banana", "ORANGE" };
+  const std::vector<std::vector<Entry>> expected = {
+    { {0, 1}, {1, 1}, {2, 1} },
+    { {0, 1}, {1, 1}, {2, 1} },
+    { {0, 1}, {1, 1}, {2, 1} }
+  };
+  TestInvertedIndexFunctionality(docs, requests, expected);
+}
+
+TEST(TestCaseInvertedIndex, TestPunctuation) {
+  const std::vector<std::string> docs = {
+    "Hello, world!",
+    "Hello... world?",
+    "Hello - world; hello: world."
+};
+  const std::vector<std::string> requests = { "hello", "world" };
+  const std::vector<std::vector<Entry>> expected = {
+    { {0, 1}, {1, 1}, {2, 2} },
+    { {0, 1}, {1, 1}, {2, 2} }
+  };
+  TestInvertedIndexFunctionality(docs, requests, expected);
+}
+
+TEST(TestCaseInvertedIndex, TestEmptyDocuments) {
+  const std::vector<std::string> docs = {
+    "",
+    "   ",
+    "word"
+};
+  const std::vector<std::string> requests = { "word" };
+  const std::vector<std::vector<Entry>> expected = {
+    { {2, 1} }
+  };
+  TestInvertedIndexFunctionality(docs, requests, expected);
+}
+
+TEST(TestCaseInvertedIndex, TestLargeDocument) {
+  std::string large_doc(1000000, 'a'); // Документ из 1 миллиона символов 'a'
+  const std::vector<std::string> docs = { large_doc };
+  const std::vector<std::string> requests = { "a" };
+  const std::vector<std::vector<Entry>> expected = {
+    { {0, 1000000} }
+  };
+  TestInvertedIndexFunctionality(docs, requests, expected);
+}
+
+TEST(TestCaseInvertedIndex, TestInvalidInput) {
+  InvertedIndex idx;
+  ASSERT_THROW(idx.UpdateDocumentBase({}), std::invalid_argument);
+}
+
+TEST(SearchServerTest, TestEmptyQuery) {
+  InvertedIndex idx;
+  idx.UpdateDocumentBase({ "document" });
+  SearchServer srv(idx);
+  ASSERT_THROW(srv.search({ "" }), std::invalid_argument);
+}
+
+TEST(SearchServerTest, TestResponsesLimit) {
+  const std::vector<std::string> docs = {
+    "apple banana",
+    "apple banana cherry",
+    "apple banana cherry date",
+    "apple banana cherry date egg"
+};
+  const std::vector<std::string> requests = { "apple banana cherry date egg" };
+  const std::vector<std::vector<RelativeIndex>> expected = {
+    { {3, 1.0f}, {2, 0.8f}, {1, 0.6f} }
+  };
+  InvertedIndex idx;
+  idx.UpdateDocumentBase(docs);
+  SearchServer srv(idx, 3);
+  auto result = srv.search(requests);
+  ASSERT_EQ(result, expected);
+}
+
 
 

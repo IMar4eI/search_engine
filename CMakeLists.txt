@@ -17,12 +17,12 @@ file(GLOB SOURCES ${SOURCE_DIR}/*.cpp)
 file(GLOB HEADERS ${INCLUDE_DIR}/*.h)
 
 # Enabling automatic processing of Qt files
-#set(CMAKE_AUTOMOC ON)
-#set(CMAKE_AUTORCC ON)
-#set(CMAKE_AUTOUIC ON)
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
+set(CMAKE_AUTOUIC ON)
 
 # Finding Qt
-#find_package(Qt6 REQUIRED COMPONENTS Core Gui Quick Qml)
+find_package(Qt6 REQUIRED COMPONENTS Core )
 
 # Include directories
 include_directories(${INCLUDE_DIR})
@@ -40,14 +40,7 @@ FetchContent_Declare(
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE
 )
 
-# nlohmann/json
-FetchContent_Declare(
-        json
-        GIT_REPOSITORY https://github.com/nlohmann/json.git
-        GIT_TAG v3.10.5 # Use the stable version
-)
-
-FetchContent_MakeAvailable(googletest json)
+FetchContent_MakeAvailable(googletest)
 
 # Executable file
 add_executable(search_engine
@@ -57,7 +50,7 @@ add_executable(search_engine
 )
 
 # Library connection
-target_link_libraries(search_engine PRIVATE nlohmann_json)
+target_link_libraries(search_engine PRIVATE Qt6::Core)
 
 # Add test executable
 enable_testing()
@@ -77,7 +70,7 @@ target_sources(unit_tests PRIVATE
 
 # Link test libraries
 target_include_directories(unit_tests PRIVATE ${INCLUDE_DIR})
-target_link_libraries(unit_tests PRIVATE gtest_main nlohmann_json)
+target_link_libraries(unit_tests PRIVATE gtest_main Qt6::Core)
 
 # GoogleTest integration
 include(GoogleTest)
