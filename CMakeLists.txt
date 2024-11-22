@@ -16,18 +16,22 @@ set(TEST_DIR ${PROJECT_SOURCE_DIR}/tests)
 file(GLOB SOURCES ${SOURCE_DIR}/*.cpp)
 file(GLOB HEADERS ${INCLUDE_DIR}/*.h)
 
+# Searching all of UI files
+#file(GLOB UI_FILES ${SOURCE_DIR}/*.ui)
+#set(SOURCES ${SOURCES} ${UI_FILES})
+
 # Enabling automatic processing of Qt files
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
 # Finding Qt
-find_package(Qt6 REQUIRED COMPONENTS Core )
+find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
 
 # Include directories
 include_directories(${INCLUDE_DIR})
 
-# Connecting resources
+# Connecting resources.qrc
 #qt_add_resources(QRC_RESOURCES resources/resources.qrc)
 
 # Connect to FetchContent
@@ -46,11 +50,11 @@ FetchContent_MakeAvailable(googletest)
 add_executable(search_engine
         ${SOURCES}
         ${HEADERS}
-        #${QRC_RESOURCES}
+        ${QRC_RESOURCES}
 )
 
 # Library connection
-target_link_libraries(search_engine PRIVATE Qt6::Core)
+target_link_libraries(search_engine PRIVATE Qt6::Core Qt6::Widgets)
 
 # Add test executable
 enable_testing()
@@ -70,7 +74,7 @@ target_sources(unit_tests PRIVATE
 
 # Link test libraries
 target_include_directories(unit_tests PRIVATE ${INCLUDE_DIR})
-target_link_libraries(unit_tests PRIVATE gtest_main Qt6::Core)
+target_link_libraries(unit_tests PRIVATE gtest_main Qt6::Core Qt6::Widgets)
 
 # GoogleTest integration
 include(GoogleTest)
