@@ -1,81 +1,84 @@
 #include "ConverterJSON.h"
-#include <fstream>
+#include <QDir>
+#include <QFile>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonArray>
 #include <iostream>
-#include <filesystem>
-#include <iomanip>
-#include <nlohmann/json.hpp>
-
-using json = nlohmann::json;
+#include <stdexcept>
 
 /**
- * Reads text documents specified in the config.json file.
+ * @brief Reads text documents specified in the config.json file.
  * @return Vector containing the contents of each document.
  */
 std::vector<std::string> ConverterJSON::GetTextDocuments() {
-  std::vector<std::string> documents;
-  std::string config_path = "../data/config.json";
-  std::ifstream config_file(config_path);
+    std::vector<std::string> documents;
 
-  if (!config_file.is_open()) {
-    throw std::runtime_error("Cannot open config file: " + config_path);
-  }
+    QString base_path = QDir::currentPath();
+    QString config_path = QDir(base_path).filePath("../data/config.json");
+    QFile config_file(config_path);
 
-  json config_json;
-  try {
-    config_file >> config_json;
-  } catch (const json::parse_error& e) {
-    throw std::runtime_error("Error parsing JSON in config file: " + std::string(e.what()));
-  }
-  config_file.close();
-
-  // Check if the "config" sections exists
-  if (config_json.find("config") == config_json.end()) {
-    throw std::runtime_error("config file is empty");
-  }
-
-  // Check if the "config" section exists
-  if (!config_json.contains("config") || !config_json["config"].is_object()) {
-    throw std::runtime_error("Config file is missing 'config' section or it is not an object.");
-  }
-
-  // Check for "version" in "config"
-  if (!config_json["config"].contains("version") || !config_json["config"]["version"].is_string()) {
-    throw std::runtime_error("Config file is missing 'version' field in 'config' section or it is not a string.");
-  }
-
-  // Check if "files" section exists
-  if (!config_json.contains("files") || !config_json["files"].is_array()) {
-    throw std::runtime_error("Config file is missing 'files' section or it is not an array.");
-  }
-
-  // Reserve space in the vector to avoid reallocations
-  documents.reserve(config_json["files"].size());
-
-  // Iterate over each file path in "files"
-  for (const auto& file_path_json : config_json["files"]) {
-    if (!file_path_json.is_string()) {
-      std::cerr << "File path is not a string. Skipping entry." << std::endl;
-      continue;
-    }
-    std::string file_path = file_path_json.get<std::string>();
-
-    std::ifstream file(file_path);
-    if (!file.is_open()) {
-      std::cerr << "Cannot open file: " << file_path << ". Skipping this file." << std::endl;
-      continue;
+    if (!config_file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        throw std::runtime_error("Cannot open config file: " + config_path.toStdString());
     }
 
-    // Read the entire content of the file
-    std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-    documents.push_back(std::move(content));
-    file.close();
-  }
+    QByteArray config_data = config_file.readAll();
+    config_file.close();
 
-  if (documents.empty()) {
-    throw std::runtime_error("No documents were read. Please check the file paths in config.json.");
-  }
+    QJsonDocument config_doc = QJsonDocument::fromJson(config_data);
+    if (config_doc.isNull()) {
+        throw std::runtime_error("Error parsing JSON in config file.");
+    }
 
-  return documents;
+    QJsonObject config_json = config_doc.object();
+
+    // Check if the "config" section exists
+    if (!config_json.contains("config") || !config_json["config"].isObject()) {
+        throw std::runtime_error("Config file is missing 'config' section or it is not an object.");
+    }
+
+    QJsonObject config_section = config_json["config"].toObject();
+
+    // Check for "version" in "config"
+    if (!config_section.contains("version") || !config_section["version"].isString()) {
+        throw std::runtime_error("Config file is missing 'version' field in 'config' section or it is not a string.");
+    }
+
+    // Check if "files" section exists
+    if (!config_json.contains("files") || !config_json["files"].isArray()) {
+        throw std::runtime_error("Config file is missing 'files' section or it is not an array.");
+    }
+
+    QJsonArray files_array = config_json["files"].toArray();
+
+    // Reserve space in the vector to avoid reallocations
+    documents.reserve(files_array.size());
+
+    // Iterate over each file path in "files"
+    for (const QJsonValue& file_path_value : files_array) {
+        if (!file_path_value.isString()) {
+            std::cerr << "File path is not a string. Skipping entry." << std::endl;
+            continue;
+        }
+        QString file_path = file_path_value.toString();
+        QString full_file_path = QDir(base_path).filePath(file_path);
+
+        QFile file(full_file_path);
+        if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            std::cerr << "Cannot open file: " << full_file_path.toStdString() << ". Skipping this file." << std::endl;
+            continue;
+        }
+
+        QByteArray file_data = file.readAll();
+        documents.push_back(file_data.toStdString());
+        file.close();
+    }
+
+    if (documents.empty()) {
+        throw std::runtime_error("No documents were read. Please check the file paths in config.json.");
+    }
+
+    return documents;
 }
 
 /**
@@ -83,100 +86,112 @@ std::vector<std::string> ConverterJSON::GetTextDocuments() {
  * @return Maximum number of responses; returns default value 5 if not specified.
  */
 int ConverterJSON::GetResponsesLimit() {
-  std::string config_path = "../data/config.json";
-  std::ifstream config_file(config_path);
+    QString base_path = QDir::currentPath();
+    QString config_path = QDir(base_path).filePath("../data/config.json");
+    QFile config_file(config_path);
 
-  if (!config_file.is_open()) {
-    throw std::runtime_error("Cannot open config file: " + config_path);
-  }
-
-  json config_json;
-  try {
-    config_file >> config_json;
-  } catch (const json::parse_error& e) {
-    throw std::runtime_error("Error parsing JSON in config file: " + std::string(e.what()));
-  }
-  config_file.close();
-
-  int max_responses = 5; // Default value
-
-  // Check if "max_responses" exists in "config"
-  if (config_json.contains("config") && config_json["config"].contains("max_responses")) {
-    if (config_json["config"]["max_responses"].is_number_integer()) {
-      max_responses = config_json["config"]["max_responses"].get<int>();
-    } else {
-      std::cerr << "'max_responses' in config file is not an integer. Using default value: 5" << std::endl;
+    if (!config_file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        throw std::runtime_error("Cannot open config file: " + config_path.toStdString());
     }
-  } else {
-    std::cerr << "'max_responses' not found in config file. Using default value: 5" << std::endl;
-  }
 
-  return max_responses;
+    QByteArray config_data = config_file.readAll();
+    config_file.close();
+
+    QJsonDocument config_doc = QJsonDocument::fromJson(config_data);
+    if (config_doc.isNull()) {
+        throw std::runtime_error("Error parsing JSON in config file.");
+    }
+
+    QJsonObject config_json = config_doc.object();
+
+    int max_responses = 5; // Default value
+
+    // Check if "max_responses" exists in "config"
+    if (config_json.contains("config") && config_json["config"].isObject()) {
+        QJsonObject config_section = config_json["config"].toObject();
+        if (config_section.contains("max_responses")) {
+            if (config_section["max_responses"].isDouble()) {
+                max_responses = config_section["max_responses"].toInt();
+            } else {
+                std::cerr << "'max_responses' in config file is not an integer. Using default value: 5" << std::endl;
+            }
+        } else {
+            std::cerr << "'max_responses' not found in config file. Using default value: 5" << std::endl;
+        }
+    } else {
+        std::cerr << "'config' section not found or is not an object. Using default value: 5" << std::endl;
+    }
+
+    return max_responses;
 }
 
 /**
- * Reads search requests from requests.json file.
+ * @brief Reads search requests from requests.json file.
  * @return Vector containing each request as a string.
  */
 std::vector<std::string> ConverterJSON::GetRequests() {
-  std::vector<std::string> requests;
-  std::string requests_path = "../data/requests.json";
-  std::ifstream requests_file(requests_path);
+    std::vector<std::string> requests;
+    QString base_path = QDir::currentPath();
+    QString requests_path = QDir(base_path).filePath("../data/requests.json");
+    QFile requests_file(requests_path);
 
-  if (!requests_file.is_open()) {
-    throw std::runtime_error("Cannot open requests file: " + requests_path);
-  }
-
-  json requests_json;
-  try {
-    requests_file >> requests_json;
-  } catch (const json::parse_error& e) {
-    throw std::runtime_error("Error parsing JSON in requests file: " + std::string(e.what()));
-  }
-  requests_file.close();
-
-  // Check if "requests" section exists
-  if (!requests_json.contains("requests") || !requests_json["requests"].is_array()) {
-    throw std::runtime_error("Requests file is missing 'requests' section or it is not an array.");
-  }
-
-  // Extract each request
-  for (const auto& request_json : requests_json["requests"]) {
-    if (!request_json.is_string()) {
-      std::cerr << "Request is not a string. Skipping entry." << std::endl;
-      continue;
+    if (!requests_file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        throw std::runtime_error("Cannot open requests file: " + requests_path.toStdString());
     }
-    requests.push_back(request_json.get<std::string>());
-  }
 
-  if (requests.empty()) {
-    throw std::runtime_error("No valid requests found in requests.json.");
-  }
+    QByteArray requests_data = requests_file.readAll();
+    requests_file.close();
 
-  return requests;
+    QJsonDocument requests_doc = QJsonDocument::fromJson(requests_data);
+    if (requests_doc.isNull()) {
+        throw std::runtime_error("Error parsing JSON in requests file.");
+    }
+
+    QJsonObject requests_json = requests_doc.object();
+
+    // Check if "requests" section exists
+    if (!requests_json.contains("requests") || !requests_json["requests"].isArray()) {
+        throw std::runtime_error("Requests file is missing 'requests' section or it is not an array.");
+    }
+
+    QJsonArray requests_array = requests_json["requests"].toArray();
+
+    // Extract each request
+    for (const QJsonValue& request_value : requests_array) {
+        if (!request_value.isString()) {
+            std::cerr << "Request is not a string. Skipping entry." << std::endl;
+            continue;
+        }
+        QString request = request_value.toString();
+        requests.push_back(request.toStdString());
+    }
+
+    if (requests.empty()) {
+        throw std::runtime_error("No valid requests found in requests.json.");
+    }
+
+    return requests;
 }
 
 /**
- * Writes the search results to answers.json file.
+ * @brief Writes the search results to answers.json file.
  * @param answers Vector of vectors containing RelativeIndex objects for each request.
  */
 void ConverterJSON::putAnswers(const std::vector<std::vector<RelativeIndex>>& answers) {
-  if (answers.empty()) {
+    if (answers.empty()) {
         std::cerr << "No answers to write to answers.json." << std::endl;
         return;
     }
 
-    json answers_json;
+    QJsonObject answers_json;
     int request_id = 1;
 
     // Iterate over each request's results
     for (const auto& result_for_request : answers) {
-        std::ostringstream oss;
-        oss << "request" << request_id;
-        std::string request_key = oss.str();
+        QString request_key = QString("request%1").arg(request_id);
         ++request_id;
 
-        json result;
+        QJsonObject result;
 
         if (result_for_request.empty()) {
             result["result"] = false;
@@ -184,47 +199,49 @@ void ConverterJSON::putAnswers(const std::vector<std::vector<RelativeIndex>>& an
             result["result"] = true;
 
             if (result_for_request.size() > 1) {
-                json relevance = json::array();
+                QJsonArray relevance_array;
                 for (const auto& rel : result_for_request) {
-                    relevance.push_back({
-                        {"docid", rel.doc_id},
-                        {"rank", rel.rank}
-                    });
+                    QJsonObject rel_obj;
+                    rel_obj["docid"] = static_cast<int>(rel.doc_id);
+                    rel_obj["rank"] = rel.rank;
+                    relevance_array.append(rel_obj);
                 }
-                result["relevance"] = relevance;
+                result["relevance"] = relevance_array;
             } else {
                 const auto& rel = result_for_request.front();
-                result["docid"] = rel.doc_id;
+                result["docid"] = static_cast<int>(rel.doc_id);
                 result["rank"] = rel.rank;
             }
         }
 
-        answers_json["answers"][request_key] = result;
+        answers_json[request_key] = result;
     }
 
+    QJsonObject root_json;
+    root_json["answers"] = answers_json;
+
+    QJsonDocument answers_doc(root_json);
+
+    QString base_path = QDir::currentPath();
+    QString data_dir = QDir(base_path).filePath("../data");
+
     // Create "data" directory if it doesn't exist
-    std::string data_dir = "data";
-    if (!std::filesystem::exists(data_dir)) {
-        std::error_code ec;
-        std::filesystem::create_directory(data_dir, ec);
-        if (ec) {
-            throw std::runtime_error("Failed to create directory 'data': " + ec.message());
+    QDir dir(data_dir);
+    if (!dir.exists()) {
+        if (!dir.mkpath(".")) {
+            throw std::runtime_error("Failed to create directory 'data'.");
         }
     }
 
-    std::string answers_path = "../data/answers.json";
-    std::ofstream answers_file(answers_path);
-    if (!answers_file.is_open()) {
-        throw std::runtime_error("Cannot open answers file for writing: " + answers_path);
+    QString answers_path = QDir(data_dir).filePath("answers.json");
+    QFile answers_file(answers_path);
+    if (!answers_file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        throw std::runtime_error("Cannot open answers file for writing: " + answers_path.toStdString());
     }
 
-    // Write formatted JSON to the file
-    try {
-        answers_file << std::setw(4) << answers_json;
-        answers_file.close();
-    } catch (const std::exception& e) {
-        throw std::runtime_error("Error writing to answers file: " + std::string(e.what()));
-    }
+    QByteArray answers_data = answers_doc.toJson(QJsonDocument::Indented);
+    answers_file.write(answers_data);
+    answers_file.close();
 
-    std::cout << "Answers successfully written to: " << std::filesystem::absolute(answers_path) << std::endl;
+    std::cout << "Answers successfully written to: " << answers_path.toStdString() << std::endl;
 }
