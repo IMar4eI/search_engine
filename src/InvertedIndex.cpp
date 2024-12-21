@@ -3,6 +3,17 @@
 #include <future>
 #include <unordered_map>
 #include <iostream>
+#include <cctype>
+
+std::string InvertedIndex::CleanWord(const std::string& word) {
+  std::string clean_word;
+  for (char c : word) {
+    if (std::isalnum(c)) {
+      clean_word += std::tolower(c);
+    }
+  }
+  return clean_word;
+}
 
 /**
  * @brief Updates the document base and rebuilds the inverted index.
@@ -42,6 +53,7 @@ void InvertedIndex::UpdateDocumentBase(const std::vector<std::string>& input_doc
 
           // Count occurrences of each word in the document
           while (iss >> word) {
+            word = CleanWord(word);
             ++word_count_in_doc[word];
           }
 
@@ -85,11 +97,13 @@ void InvertedIndex::UpdateDocumentBase(const std::vector<std::string>& input_doc
  * @return A vector of Entry objects containing document IDs and counts.
  */
 std::vector<Entry> InvertedIndex::GetWordCount(const std::string& word) {
-  auto it = freq_dictionary.find(word);
+  std::string clean_word = CleanWord(word);
+  auto it = freq_dictionary.find(clean_word);
   if (it != freq_dictionary.end()) {
     return it->second;
   }
   return {};
 }
+
 
 

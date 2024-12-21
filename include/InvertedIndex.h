@@ -26,14 +26,16 @@ class InvertedIndex {
      */
     std::vector<Entry> GetWordCount(const std::string& word);
 
-    /**
-     * Gets the total number of documents.
-     * @return The number of documents.
-     */
-    size_t GetDocsSize() const { return docs.size(); }
 
   private:
     std::vector<std::string> docs; // List of document contents.
     std::unordered_map<std::string, std::vector<Entry>> freq_dictionary; // Frequency dictionary (inverted index).
+
+    /**
+     * Normalizes a word by removing punctuation and converting it to lowercase.
+     * @param word The input word.
+     * @return The cleaned word.
+     */
+    std::string CleanWord(const std::string& word);
     std::mutex freq_mutex; // Mutex to protect freq_dictionary during updates.
 };

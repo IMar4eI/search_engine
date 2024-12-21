@@ -44,7 +44,7 @@ std::vector<std::vector<RelativeIndex>> SearchServer::search(const std::vector<s
       result.push_back(future.get());
     } catch (const std::exception& e) {
       std::cerr << "Error getting results from future: " << e.what() << std::endl;
-      result.push_back({});
+      result.emplace_back();
     }
   }
 
